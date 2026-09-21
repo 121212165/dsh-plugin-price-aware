@@ -1,0 +1,76 @@
+{
+  "object": "list",
+  "note": "trimmed capture of GET https://tokenrhythm.studio/v1/models taken 2026-09-21 with an API key; only the fields the parser reads are kept",
+  "data": [
+    {
+      "id": "qwen3.8-flash",
+      "owned_by": "tokenrhythm",
+      "context_length": 1000000,
+      "max_completion_tokens": 131072,
+      "currency": "CNY",
+      "input_price_per_million": "0.80000000",
+      "output_price_per_million": "2.70000000",
+      "cache_read_price_per_million": "0.10000000",
+      "has_discount": false,
+      "effective_input_price_per_million": "0.80000000",
+      "effective_output_price_per_million": "2.70000000",
+      "effective_cache_read_price_per_million": "0.10000000"
+    },
+    {
+      "id": "deepseek-v4-flash-0731",
+      "owned_by": "tokenrhythm",
+      "context_length": 1000000,
+      "max_completion_tokens": 384000,
+      "currency": "CNY",
+      "input_price_per_million": "3.00000000",
+      "output_price_per_million": "9.00000000",
+      "cache_read_price_per_million": "0.10000000",
+      "has_discount": false,
+      "effective_input_price_per_million": "3.00000000",
+      "effective_output_price_per_million": "9.00000000",
+      "effective_cache_read_price_per_million": "0.10000000"
+    },
+    {
+      "id": "deepseek-v4-pro-0813",
+      "owned_by": "tokenrhythm",
+      "context_length": 1000000,
+      "max_completion_tokens": 384000,
+      "currency": "CNY",
+      "input_price_per_million": "9.00000000",
+      "output_price_per_million": "27.00000000",
+      "cache_read_price_per_million": "0.30000000",
+      "has_discount": false,
+      "effective_input_price_per_million": "9.00000000",
+      "effective_output_price_per_million": "27.00000000",
+      "effective_cache_read_price_per_million": "0.30000000"
+    },
+    {
+      "id": "minimax-m2.7",
+      "owned_by": "tokenrhythm",
+      "context_length": 200000,
+      "max_completion_tokens": 192000,
+      "currency": "CNY",
+      "input_price_per_million": "2.10000000",
+      "output_price_per_million": "8.40000000",
+      "cache_read_price_per_million": "",
+      "has_discount": false,
+      "effective_input_price_per_million": "2.10000000",
+      "effective_output_price_per_million": "8.40000000",
+      "effective_cache_read_price_per_million": null
+    },
+    {
+      "id": "kimi-k3",
+      "owned_by": "tokenrhythm",
+      "context_length": 1048576,
+      "max_completion_tokens": 1048576,
+      "currency": "CNY",
+      "input_price_per_million": "20.00000000",
+      "output_price_per_million": "100.00000000",
+      "cache_read_price_per_million": "2.00000000",
+      "has_discount": false,
+      "effective_input_price_per_million": "20.00000000",
+      "effective_output_price_per_million": "100.00000000",
+      "effective_cache_read_price_per_million": "2.00000000"
+    }
+  ]
+}
