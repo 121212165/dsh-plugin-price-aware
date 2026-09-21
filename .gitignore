@@ -1,0 +1,7 @@
+node_modules/
+.secrets.env
+report/
+
+lib/
+*.log
+.DS_Store

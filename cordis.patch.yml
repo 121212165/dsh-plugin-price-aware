@@ -1,0 +1,32 @@
+# Mounts price-aware into a dsh profile. `dsh plugin add` appends this row; edit
+# the config in place to change the budget, or override the whole row from
+# ~/.dsh/cordis.patch.yml (later layers win per row, no deep merge).
+- insert:
+    - id: price-aware
+      name: dsh-plugin-price-aware
+      config:
+        enabled: true
+        mode: normal          # economy | normal | max | custom
+        sessionCapMajor: 10   # only read when mode: custom
+        warnPercent: 75       # spend this much of the cap and the plugin asks
+        taskAskMajor: 1.5     # one step estimated above this gets an A/B/C quote first
+        balanceFloorMajor: 3  # stop before the account is drained below this
+        currency: auto        # auto | CNY | USD
+        balanceCheck: true
+        balanceTtlSeconds: 60
+        apiKeyEnv: [DEEPSEEK_API_KEY]
+        baseUrl: https://api.deepseek.com
+        holidays: []          # Beijing YYYY-MM-DD dates billed at off-peak
+        reconThresholdMajor: 0.5
+        inputIncludesCache: false   # true for relays whose prompt_tokens includes the cache
+        injectIntoPrompt: true
+        # Relay / reseller pricing. The bundled sheet only covers DeepSeek's own
+        # price page, and a wrong price is worse than an unknown one, so anything
+        # else gets listed here. Provider-scoped ids win over generic rows.
+        prices: []
+        #  - id: jiyuan/deepseek-v4-flash
+        #    currency: CNY
+        #    perMillion: { cacheRead: 0.5, uncachedInput: 3, output: 12 }
+        #    contextTokens: 128000
+        #    maxOutputTokens: 8000
+        #    aliases: [deepseek-v4-flash]
