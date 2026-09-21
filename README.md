@@ -18,10 +18,16 @@ MIT · TypeScript · zero runtime dependencies beyond `@deepseek-ai/cordis`.
 ## Install
 
 ```bash
-dsh plugin add github:your-name/dsh-plugin-price-aware
+dsh plugin add github:121212165/dsh-plugin-price-aware
 ```
 
-or from a local checkout:
+or from a local checkout (`dsh plugin add ./dsh-plugin-price-aware`), or pin a commit:
+
+```bash
+dsh plugin add github:121212165/dsh-plugin-price-aware#main
+```
+
+Discovery for community plugins is the GitHub topic `dsh-plugin`. From a local checkout:
 
 ```bash
 dsh plugin add ./dsh-plugin-price-aware
@@ -95,10 +101,10 @@ Relay and reseller endpoints are first-class: your provider's price is not DeepS
 
 ```bash
 npm install   # dsh types land in node_modules so the wiring typechecks for real
-npm run check # typecheck + 42 tests + build
+npm run check # typecheck + 63 tests + build
 ```
 
-The plugin's `apply()` compiles against the actual `@deepseek-ai/dsh-*` declaration files, and `lib/index.js` imports clean. What is **not** verified is a live mount inside a running `dsh` session — that needs an installed harness.
+The plugin's `apply()` compiles against the actual `@deepseek-ai/dsh-*` declaration files, and `lib/index.js` imports clean. What is **not** verified is a live mount inside a running `dsh` session — that needs an installed harness (this machine's `~/.dsh` profile symlinks currently point at a deleted clone).
 
 ## Verified against a live paid endpoint
 
