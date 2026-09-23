@@ -102,3 +102,15 @@ export function usageNumbers(usage: Record<string, unknown> | null) {
 export function money(micros: number): string {
   return `¥${(micros / 1e6).toFixed(micros < 100_000 ? 4 : micros < 1e6 ? 3 : 2)}`;
 }
+
+/**
+ * The later rounds learn their caps from what earlier rounds observed, so they need
+ * those files to exist. Say which script to run instead of throwing a bare ENOENT.
+ */
+export function readPriorJson<T>(relative: string, producedBy: string): T {
+  const path = file(relative);
+  if (!existsSync(path)) {
+    throw new Error(`${relative} 不存在：先跑 node examples/${producedBy}.ts 生成它（这几轮是按观测串起来的，不能跳着跑）`);
+  }
+  return JSON.parse(readFileSync(path, 'utf8')) as T;
+}

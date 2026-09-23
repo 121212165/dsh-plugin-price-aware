@@ -18,7 +18,6 @@
         baseUrl: https://api.deepseek.com
         holidays: []          # Beijing YYYY-MM-DD dates billed at off-peak
         reconThresholdMajor: 0.5
-        inputIncludesCache: false   # true for relays whose prompt_tokens includes the cache
         injectIntoPrompt: true
         # Relay / reseller pricing. The bundled sheet only covers DeepSeek's own
         # price page, and a wrong price is worse than an unknown one, so anything

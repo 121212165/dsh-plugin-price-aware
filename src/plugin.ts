@@ -11,7 +11,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools';
 import type {} from '@deepseek-ai/dsh-commands';
 import type {} from '@deepseek-ai/dsh-tools';
 import type {} from '@deepseek-ai/dsh-system-prompt';
-import type {} from '@deepseek-ai/dsh-llm';
+import { createUserMessage } from '@deepseek-ai/dsh-llm';
 import type {} from '@deepseek-ai/dsh-session';
 
 import { DEFAULT_CONFIG, describeBudget, resolveBudget, validateConfig, type PriceAwareConfig } from './config.ts';
@@ -22,11 +22,17 @@ import { buildTiers, reconCost, reconEstimate, shouldRecon, type Estimate, type 
 import { Ledger, type RawUsage } from './ledger.ts';
 import { formatMoney, fromMajor, type Currency, type Micros } from './money.ts';
 import { DEEPSEEK_CATALOG, isCatalogStale, mergeCatalog, type PriceCatalog, type PriceEntry } from './pricing/catalog.ts';
-import { emptyBuckets } from './pricing/cost.ts';
+import { costOf, emptyBuckets } from './pricing/cost.ts';
 import { resolveModel, type ResolveResult } from './pricing/resolve.ts';
 
 export const name = 'price-aware';
-export const inject = ['commands', 'llm', 'session', 'system-prompt', 'tools'];
+/**
+ * Service names are the strings each service passes to cordis' `Service`
+ * constructor — `systemPrompt` and `sessions`, not the package names
+ * `system-prompt` / `session`. A name that resolves to no implementation makes
+ * cordis mark the plugin inactive, so apply() is never called and nothing errors.
+ */
+export const inject = ['commands', 'llm', 'sessions', 'systemPrompt', 'tools'];
 
 const modes = Schema.union([Schema.const('economy'), Schema.const('normal'), Schema.const('max'), Schema.const('custom')]);
 
@@ -49,13 +55,16 @@ export const Config = Schema.object({
   prices: Schema.array(
     Schema.object({
       id: Schema.string(),
-      currency: Schema.string().default('CNY'),
+      // a free-form currency string would silently mis-scale every displayed number
+      currency: Schema.union([Schema.const('CNY'), Schema.const('USD'), Schema.const('EUR')]).default('CNY'),
       perMillion: Schema.object({
-        cacheRead: Schema.number().default(0),
+        // deliberately no defaults here: an absent cacheRead must inherit the row it
+        // overrides, and defaulting it to 0 would make cached tokens free
+        cacheRead: Schema.number(),
         uncachedInput: Schema.number(),
         output: Schema.number(),
       }),
-      peakMultiplier: Schema.number().default(1),
+      peakMultiplier: Schema.number(),
       contextTokens: Schema.natural().default(1_000_000),
       maxOutputTokens: Schema.natural().default(256_000),
       aliases: Schema.array(Schema.string()).default([]),
@@ -64,7 +73,6 @@ export const Config = Schema.object({
   ).default([]),
   holidays: Schema.array(Schema.string()).default([]),
   reconThresholdMajor: Schema.number().default(0.5),
-  inputIncludesCache: Schema.boolean().default(false),
   injectIntoPrompt: Schema.boolean().default(true),
 });
 
@@ -104,7 +112,6 @@ export function apply(ctx: Context, config: Config): void {
         model,
         ledger: new Ledger((event) => resolveModel(event.modelId ?? model.id, catalog, { provider: event.provider ?? model.provider }), {
           rules,
-          inputIncludesCache: config.inputIncludesCache,
         }),
       };
       moneyBySession.set(sessionId, money);
@@ -210,19 +217,56 @@ export function apply(ctx: Context, config: Config): void {
   };
 
   /**
-   * The gate only earns trust where dsh lets a plugin answer for money: a call
-   * whose own payload is big enough to matter is priced before it dispatches.
-   * It never refuses on its own — it hands the model the menu to relay.
+   * dsh gives a plugin exactly two money voices: `tools/pre-execute` may allow /
+   * deny / ask, and only `tools/post-execute` may hand the model new context.
+   * `{kind:'allow', contexts:[...]}` is not a thing — it compiles and is silently
+   * dropped, so the advice has to ride the post-execute leg instead.
    */
+  const pendingAdvice = new Map<string, string>();
+
   ctx.on('tools/pre-execute', async (exec, next) => {
-    const projected = estimateCallMicros(exec.name, exec.arguments);
-    if (projected < policy.taskSoftCapMicros) return next();
-    const gated = gate(sessionIdOf(exec.agent), projected);
+    const sessionId = sessionIdOf(exec.agent);
+    const block = moneyBlock(sessionId);
+    const entry = block.resolution.kind === 'known' ? block.resolution.entry : null;
+    const projected = estimateCallMicros(exec, entry);
+    if (!entry || projected < policy.taskSoftCapMicros) return next();
+    const gated = gate(sessionId, projected);
     if (!gated.entry) return next();
-    const decision: GateDecision | undefined = gated.decision;
+    const decision = gated.decision;
     if (!decision || decision.kind === 'allow') return next();
-    if (decision.kind === 'block') return { kind: 'ask', reason: renderDecision(decision, gated.currency) };
-    return { kind: 'allow', contexts: [renderDecision(decision, gated.currency)] };
+    const callKey = String((exec as { rootCallId?: unknown }).rootCallId ?? (exec as { callId?: unknown }).callId ?? '');
+    if (decision.kind === 'block') {
+      pendingAdvice.set(callKey, renderDecision(decision, gated.currency));
+      return { kind: 'ask', reason: renderDecision(decision, gated.currency) };
+    }
+    if (callKey && pendingAdvice.size < 200) pendingAdvice.set(callKey, renderDecision(decision, gated.currency));
+    return next();
+  });
+
+  ctx.on('tools/post-execute', async (exec, _result, next) => {
+    const callKey = String((exec as { rootCallId?: unknown }).rootCallId ?? (exec as { callId?: unknown }).callId ?? '');
+    const text = pendingAdvice.get(callKey);
+    if (!text) return next();
+    pendingAdvice.delete(callKey);
+    const downstream = await next();
+    return {
+      ...downstream,
+      additionalContexts: [
+        createUserMessage({
+          content: [{ type: 'text', text }],
+          source: { kind: 'plugin', plugin: name, form: 'notice', summary: '预算提示' },
+        }),
+        ...('additionalContexts' in downstream ? (downstream.additionalContexts ?? []) : []),
+      ],
+    };
+  });
+
+  // sessions come and go; a long-lived host must not accumulate ledgers forever
+  ctx.on('session/disposed', (session) => {
+    const key = String((session as { id?: unknown }).id ?? '');
+    moneyBySession.delete(key);
+    modelByAgent.delete(key);
+    log.debug(`released money state for ${key}`);
   });
 
   ctx.commands.register({
@@ -333,10 +377,17 @@ function describeUnknown(resolution: ResolveResult): string {
     : '模型价目异常';
 }
 
-/** Rough cost of one call: the payload it injects plus the turn it usually triggers. */
-function estimateCallMicros(toolName: string, args: unknown): Micros {
-  const chars = toolName === 'str_replace_editor' || toolName === 'write' ? JSON.stringify(args ?? '').length : 400;
-  return Math.round((chars * 0.3 + 1500) * 9);
+/**
+ * Price a pending tool call against the model that would serve it. The guess is
+ * coarse on purpose — tokens-per-character for a JSON payload and one turn of
+ * overhead — but the *unit price* must come from the catalog, because a hardcoded
+ * rate silently mis-gates every model that is not priced like deepseek pro peak.
+ */
+function estimateCallMicros(exec: { name?: string; arguments?: unknown }, entry: PriceEntry | null): Micros {
+  if (!entry) return 0;
+  const chars = JSON.stringify(exec.arguments ?? {}).length || 400;
+  const tokens = Math.round(chars * 0.3 + 1500);
+  return costOf({ uncachedInput: tokens, output: Math.round(tokens * 0.2), cacheRead: 0 }, entry, {}).micros;
 }
 
 function renderDecision(decision: Exclude<GateDecision, { kind: 'allow' }>, currency: Currency): string {

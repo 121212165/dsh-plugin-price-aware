@@ -131,7 +131,8 @@ test('the model sees prices, the clock, and its own bill', () => {
 test('an unpriced model gets no invented numbers', () => {
   const text = renderMoneyContext(contextInput({ resolution: resolveModel('glm-5-turbo', DEEPSEEK_CATALOG) }));
   assert.ok(!/¥\d/.test(text), text);
-  assert.ok(text.includes('未知') && text.includes('price-add'));
+  assert.ok(text.includes('未知'), text);
+  assert.ok(text.includes('price-aware.prices'), '必须指向真实存在的配置键，而不是编一个命令');
 });
 
 test('unknown balance says so instead of printing a hole', () => {

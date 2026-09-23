@@ -8,6 +8,9 @@ import { costOf } from './pricing/cost.ts';
  * returned zero visible characters, and cost per *useful* character varied by
  * three orders of magnitude across the same price sheet.
  */
+/** mixed code and Chinese prose averages out at ~2.5 written characters per token */
+export const FALLBACK_CHARS_PER_TOKEN = 2.5;
+
 export interface CallObservation {
   modelId: string;
   actualMicros: Micros;
@@ -75,7 +78,10 @@ export function profileModels(observations: CallObservation[]): Map<string, Mode
       charsPerCompletionToken: Number(charsPerCompletionToken.toFixed(3)),
       capHitRate,
       selfFinishedRate: Number((1 - capHitRate).toFixed(3)),
-      microPerKiloChar: billed.length ? Math.round(billed.reduce((sum, o) => sum + o.actualMicros, 0) / (charTotal / 1000)) : null,
+      // every cent this model was charged goes into the numerator, including the calls
+      // that billed a full cap and returned no text: hiding them makes a silently
+      // useless model look like a cheap one
+      microPerKiloChar: charTotal > 0 ? Math.round(list.reduce((sum, o) => sum + o.actualMicros, 0) / (charTotal / 1000)) : null,
       starving: charTotal === 0,
     });
   }
@@ -116,14 +122,17 @@ export function rankByUsableCost(
         return { modelId: short, entry, profile, estMicros: null, estVisibleChars: 0, fits: false };
       }
       // a model that has already run into its cap is not done talking; give it room
-      const tokensForWant = Math.ceil((options.wantChars / (2.5 * usableShare)) * (1 + (profile.capHitRate ?? 0)));
+      // same yield assumption as recommendMaxTokens: a model that has been observed
+      // producing text is priced on that measurement, not on a generic constant
+      const charsPerToken = profile.charsPerCompletionToken > 0 ? profile.charsPerCompletionToken : FALLBACK_CHARS_PER_TOKEN;
+      const tokensForWant = Math.ceil((options.wantChars / charsPerToken) * (1 + (profile.capHitRate ?? 0)));
       const estMicros = costOf({ uncachedInput: promptTokens, output: tokensForWant, cacheRead: 0 }, entry, {}).micros;
       return {
         modelId: short,
         entry,
         profile,
         estMicros,
-        estVisibleChars: Math.round((tokensForWant * usableShare) * 2.5),
+        estVisibleChars: Math.round(tokensForWant * charsPerToken * usableShare),
         fits: estMicros <= options.remainingMicros,
       };
     })

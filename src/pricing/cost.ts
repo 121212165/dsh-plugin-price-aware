@@ -52,11 +52,14 @@ export function cacheHitRate(buckets: TokenBuckets): number {
 
 export function effectivePrices(entry: PriceEntry, regime: Regime): PricePerMillion {
   const m = regime === 'peak' ? (entry.peakMultiplier ?? 1) : 1;
+  // a row that forgot cacheRead must not make cached tokens free, and one that forgot
+  // output must not silently bill the most expensive bucket at zero
+  const uncachedInput = entry.perMillion.uncachedInput ?? NaN;
   return {
-    cacheRead: entry.perMillion.cacheRead * m,
-    uncachedInput: entry.perMillion.uncachedInput * m,
-    output: entry.perMillion.output * m,
-    cacheWrite: (entry.perMillion.cacheWrite ?? entry.perMillion.uncachedInput) * m,
+    cacheRead: (entry.perMillion.cacheRead ?? uncachedInput) * m,
+    uncachedInput: uncachedInput * m,
+    output: (entry.perMillion.output ?? NaN) * m,
+    cacheWrite: (entry.perMillion.cacheWrite ?? uncachedInput) * m,
   };
 }
 

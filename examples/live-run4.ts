@@ -6,7 +6,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { chat, file, loadSecrets, money, usageNumbers } from './live-lib.ts';
+import { chat, file, loadSecrets, money, readPriorJson, usageNumbers } from './live-lib.ts';
 import { catalogFromProviderModels, usageCostMicros } from '../src/provider.ts';
 import { profileModels, recommendMaxTokens, rankByUsableCost } from '../src/profile.ts';
 import { fromMajor } from '../src/money.ts';
@@ -15,10 +15,10 @@ const BUDGET = fromMajor(18);
 const secrets = loadSecrets();
 const provider = 'jiyuan';
 
-const usage3 = JSON.parse(readFileSync(file('report/usage3.json'), 'utf8')) as {
+const usage3 = readPriorJson<{
   spent: number;
   observations: Parameters<typeof profileModels>[0];
-};
+}>('report/usage3.json', 'live-run3');
 const profiles = profileModels(usage3.observations);
 const modelsJson = await (await fetch(`${secrets.base}/models`, { headers: { Authorization: `Bearer ${secrets.key}` } })).json() as { data: Parameters<typeof catalogFromProviderModels>[0] };
 const { catalog } = catalogFromProviderModels(modelsJson.data, { provider });

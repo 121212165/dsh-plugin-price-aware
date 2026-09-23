@@ -84,7 +84,6 @@ price-aware:
   taskAskMajor: 1.5       # one step above this gets an A/B/C quote first
   balanceFloorMajor: 3    # stop before draining the account below this
   holidays: ['2026-10-01'] # Beijing dates billed off-peak
-  inputIncludesCache: false
   prices:
     - id: jiyuan/deepseek-v4-flash     # provider-scoped rows beat generic ones
       currency: CNY
@@ -101,7 +100,7 @@ Relay and reseller endpoints are first-class: your provider's price is not DeepS
 
 ```bash
 npm install   # dsh types land in node_modules so the wiring typechecks for real
-npm run check # typecheck + 63 tests + build
+npm run check # typecheck + 74 tests + build
 ```
 
 The plugin's `apply()` compiles against the actual `@deepseek-ai/dsh-*` declaration files, and `lib/index.js` imports clean. What is **not** verified is a live mount inside a running `dsh` session — that needs an installed harness (this machine's `~/.dsh` profile symlinks currently point at a deleted clone).
@@ -112,13 +111,14 @@ The plugin's `apply()` compiles against the actual `@deepseek-ai/dsh-*` declarat
 
 | | 结果 |
 |---|---|
-| Spent | **¥0.406 / ¥18.00** across 22 billed calls |
+| Spent | **¥2.95** measured across 59 billed calls, until the gateway answered `402 余额不足` while the local ledger still believed **¥15.05** was left |
 | Price source | `/v1/models` publishes CNY rates → `catalogFromProviderModels()` ingests any self-reporting gateway |
 | Official-sheet assumption would have been wrong | relay `deepseek-v4-flash-0731` = ¥3/9/0.1 per 1M vs DeepSeek's own ¥1/4/0.02 — **3× under-billed** if matched by name |
 | Cache | `cached_tokens` was **0 in every call**, including 3 identical 3.7k-token prefixes → this gateway eats no prefix discount; `cacheableShare` must be 0 here |
 | Reasoning | up to **100% of `completion_tokens` invisible**; several round-2 calls billed a full cap and returned 0 characters |
 | Cost per useful output | best ¥0.0032/千可见字符, worst ¥9.53/千 — a **~3000× spread** the token-price table alone cannot see |
 | Deliverable | `report/content.js`, 10 287 chars, passes `vm.Script`, covers all 6 F1 sub-requirements |
+| Ranking by cost per *parseable* file | `deepseek-v4-flash-0731` ¥0.048 · `minimax-m2.7` ¥0.077 · `qwen3.7-max` ¥0.090 · `deepseek-v4-pro-0813` ¥0.148 — and 8 models took money and delivered **zero** parseable files |
 | Final calibration | median bias ×0.858 with headroom reported against the quote, not the bill |
 
 The headline is that **prompt discipline is a cost control**: the same model, same cap (6263) and same task filled the cap and truncated in round 4, then self-finished at 2904 tokens for ¥0.028 in round 5 after the system prompt forbade fences and prose. Reproduce with `node examples/live-run.ts && node examples/live-run2.ts && node examples/live-run3.ts && node examples/live-run4.ts && node examples/live-run5.ts`; every run writes to `report/`.
@@ -128,6 +128,8 @@ The headline is that **prompt discipline is a cost control**: the same model, sa
 - **The bundled price table is a dated snapshot** (`asOf` in `src/pricing/catalog.ts`, DeepSeek's page as of 2026-09-21). After 45 days the block admits it may be stale. For gateways that publish rates on `/v1/models`, use `catalogFromProviderModels()` instead of the snapshot — that path is the one the live test exercised.
 - **Chinese public holidays default to an empty list.** Weekday peak hours are correct; a holiday that should bill off-peak will bill peak until you add it. Guessing a holiday calendar into a billing path is worse than an honest gap.
 - **Peak windows are configurable but not provider-aware.** Any provider with different peak rules needs `peakMinutes` changes at the rules layer.
+- **A local ledger is not a balance.** When the provider has no credits endpoint, `spentMicros` drifts from reality with every unpriced call, discount, or billing rule we do not know about. In the live test the gateway refused for lack of funds while our books said 84% of the budget remained. The plugin must say "as far as I can see" wherever it states remaining money, and `/money` shows how many events went unpriced.
+
 - **`dsh` is a developer preview** with no ABI stability promise. `@deepseek-ai/dsh-base` is pinned for typechecking; expect churn between alpha tags.
 - **Cache-write tokens are priced at zero** because DeepSeek's prompt cache is automatic and unbilled. Anthropic-style providers that bill cache writes at 1.25× need `perMillion.cacheWrite` set.
 - **The gate can only speak where dsh lets it.** Today that is `tools/pre-execute`; a hard per-request cap would need a model-call veto, which the harness reserves for its own loop.
