@@ -77,6 +77,19 @@ export function decide(input: GateInput): GateDecision {
   const projected = input.projectedMicros;
   const after = input.spentMicros + projected;
 
+  // NaN slips in from a bad price row or an unpriced event; every comparison below
+  // would then be false and the gate would report "within budget" for an unknown spend
+  if (!Number.isFinite(input.spentMicros) || !Number.isFinite(projected)) {
+    return {
+      kind: 'ask',
+      headline: `账本算不出总额（已花 ${input.spentMicros}，本步预计 ${projected}），先问一句再花`,
+      options: [
+        { id: 'continue', label: '继续', detail: '确认按未知花费继续，本次不记账拦截', costMicros: null },
+        { id: 'stop', label: '停在这里', detail: '账本坏了就先修价目，别在盲区里烧钱', costMicros: 0 },
+      ],
+    };
+  }
+
   const capHit = policy.sessionCapMicros !== Number.POSITIVE_INFINITY && after >= policy.sessionCapMicros;
   const capWarn =
     policy.sessionCapMicros !== Number.POSITIVE_INFINITY &&

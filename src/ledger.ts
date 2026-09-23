@@ -5,11 +5,12 @@ import type { RegimeRules } from './pricing/window.ts';
 import type { ResolveResult } from './pricing/resolve.ts';
 
 /**
- * dsh's `assistant/message.usage.inputTokens` is already the *uncached* remainder: the
- * DeepSeek translate layer subtracts `prompt_cache_hit_tokens` before it emits
- * (packages/llm/llm-deepseek/src/protocols/chat-completions/translate.ts:55-72).
- * Add `inputIncludesCache` back only for providers whose raw JSON follows the OpenAI
- * convention, where the cached prefix is still inside `prompt_tokens`.
+ * dsh's `assistant/message.usage` counts are DISJOINT by contract: `inputTokens` is
+ * uncached input only, and adapters whose providers fold the cache into a single
+ * `prompt_tokens` subtract it before publishing. So the ledger never subtracts here —
+ * doing so would bill the same tokens short by their cached share and loosen the gate.
+ * `inputIncludesCache` exists only for callers feeding raw OpenAI-shaped JSON that has
+ * not been through dsh's translation (see normalizeOpenAiUsage in provider.ts).
  */
 export interface RawUsage {
   inputTokens?: number;

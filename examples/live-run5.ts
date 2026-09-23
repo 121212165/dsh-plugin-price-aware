@@ -9,7 +9,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { chat, file, loadSecrets, money, usageNumbers } from './live-lib.ts';
+import { chat, file, loadSecrets, money, readPriorJson, usageNumbers } from './live-lib.ts';
 import { catalogFromProviderModels, usageCostMicros } from '../src/provider.ts';
 import { escalateCap, profileModels, quoteTrust, recommendMaxTokens } from '../src/profile.ts';
 import { fromMajor } from '../src/money.ts';
@@ -23,7 +23,10 @@ const say = (line: string) => {
   log.push(line + '\n');
 };
 
-const usage3 = JSON.parse(readFileSync(file('report/usage3.json'), 'utf8')) as { spent: number; observations: Parameters<typeof profileModels>[0] };
+const usage3 = readPriorJson<{ spent: number; observations: Parameters<typeof profileModels>[0] }>(
+  'report/usage3.json',
+  'live-run3',
+);
 const usage4spent = fromMajor(0.0583);
 let spent = usage3.spent + usage4spent;
 const profiles = profileModels(usage3.observations);

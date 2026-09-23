@@ -119,7 +119,7 @@ export function extractCodeChunks(answer: string): CodeChunk[] {
 
   while (index < lines.length) {
     const line = lines[index] ?? '';
-    const fenceMatch = /^(`{3,})([a-zA-Z0-9_+.-]*)[ \t]*([^\n]*)$/.exec(line.trim());
+    const fenceMatch = /^(`{3,}|~{3,})([a-zA-Z0-9_+.-]*)[ \t]*([^\n]*)$/.exec(line.trim());
     if (!fenceMatch) {
       index++;
       continue;
@@ -127,11 +127,13 @@ export function extractCodeChunks(answer: string): CodeChunk[] {
     const marker = fenceMatch[1]!;
     const declaredLang = (fenceMatch[2] ?? '').toLowerCase();
     const infoRest = fenceMatch[3] ?? '';
+    const fenceChar = marker[0]!;
     const infoName = nameFromInfoString(infoRest) ?? nameFromInfoString(declaredLang);
     const bodyLines: string[] = [];
     let cursor = index + 1;
     let closed = false;
-    const closer = new RegExp('^' + marker[1]!.repeat(marker.length) + '\\s*$');
+    // a run of tildes must be closed by tildes, backticks by backticks
+    const closer = new RegExp('^' + fenceMatch[1]![0]!.repeat(marker.length) + '\\s*$');
     while (cursor < lines.length) {
       if (closer.test(lines[cursor]!.trim())) {
         closed = true;
@@ -153,12 +155,16 @@ export function extractCodeChunks(answer: string): CodeChunk[] {
   return dedupeByName(chunks);
 }
 
-/** Later definitions of the same file win — a model often restates a file after fixing it. */
+/**
+ * The last complete definition of a file wins, because a model that restates a file
+ * is usually fixing it. A later *truncated* restatement must not throw away an earlier
+ * complete version, so an unterminated chunk only wins when nothing complete follows.
+ */
 export function dedupeByName(chunks: CodeChunk[]): CodeChunk[] {
   const byName = new Map<string, CodeChunk>();
   for (const chunk of chunks) {
     const existing = byName.get(chunk.file);
-    if (!existing || chunk.body.length >= existing.body.length) byName.set(chunk.file, chunk);
+    if (!existing || !chunk.unterminated || existing.unterminated) byName.set(chunk.file, chunk);
   }
   return [...byName.values()];
 }

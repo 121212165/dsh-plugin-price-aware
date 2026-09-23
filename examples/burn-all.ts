@@ -35,6 +35,7 @@ const say = (line: string) => {
 
 const observations: CallObservation[] = [];
 let spent = 0;
+let quotaExhaustedAt: number | null = null;
 
 const modelsJson = await (await fetch(`${secrets.base}/models`, { headers: { Authorization: `Bearer ${secrets.key}` } })).json() as { data: Parameters<typeof catalogFromProviderModels>[0] };
 const { catalog } = catalogFromProviderModels(modelsJson.data, { provider });
@@ -80,8 +81,10 @@ async function attempt(modelId: string, messages: { role: string; content: strin
   const result = await chat(secrets, modelId, messages, cap, { attempts: 2, timeoutMs: 300_000 });
   if (!result.ok) {
     if (/额度|402/.test(result.error)) {
-      say(`\n额度耗尽：${result.error}`);
-      spent = BUDGET;
+      // never clamp `spent` to the budget: the gap between what we accounted for and
+      // what the provider actually had left is itself the finding worth reporting
+      quotaExhaustedAt = spent;
+      say(`\n额度耗尽（402）：${result.error} · 本地记账此刻 ${money(spent)}，声明预算 ${money(BUDGET)}`);
     }
     return { error: result.error };
   }
@@ -107,12 +110,12 @@ const safeName = (value: string) => value.replace(/[^\w.+-]/g, '_');
 let round = 0;
 let calls = 0;
 
-while (round < 8 && spent < BUDGET * 0.995) {
+while (round < 8 && spent < BUDGET * 0.995 && quotaExhaustedAt === null) {
   round++;
   const profiles = profileModels(observations);
   let roundStart = spent;
   for (const modelId of ['qwen3.8-flash','glm-5.3-flash','deepseek-v4-flash-0731','minimax-m2.7','mimo-v2.5-pro','seed-2.1-turbo','qwen3.8-27b','longcat-2.0','deepseek-v4-pro-0813','kimi-k2.6','glm-5.1','seed-2.1-pro','glm-5.2','qwen3.7-flash','glm-5.3-flashx','kimi-k2.7-code','deepseek-flash','qwen3.7-max','kimi-k3','qwen3.8-max','glm-5.3']) {
-    if (spent >= BUDGET * 0.995) break;
+    if (spent >= BUDGET * 0.995 || quotaExhaustedAt !== null) break;
     const entry = entryOf(modelId);
     const profile = profiles.get(modelId) ?? null;
     let cap = capFor(modelId, profile);
@@ -192,7 +195,12 @@ say('|---|---|---|---|');
 for (const row of leaderboard) {
   say(`| ${row.modelId} | ${row.calls} | ${row.delivered} | ${row.microPerUsableFile == null ? '—（一个都没交付出）' : money(row.microPerUsableFile)} |`);
 }
-say(`\n- 总计 ${calls} 次调用，花掉 ${money(spent)} / ¥18.00`);
+say(`\n- ${calls} 次尝试，其中 ${observations.length} 次产生计费，实测花掉 ${money(spent)} / 声明预算 ${money(BUDGET)}`);
+if (quotaExhaustedAt !== null) {
+  say(
+    `- ⚠ 网关在本地记账 ${money(quotaExhaustedAt)} 时就回了 402「余额不足」，而账本以为还剩 ${money(BUDGET - quotaExhaustedAt)} —— 没有余额接口时，本地账本只能自我感觉良好`,
+  );
+}
 say(`- 落盘产物：report/bundle/ 下 ${readdirBundle().length} 个文件`);
 writeFileSync(file('report/burn.json'), JSON.stringify({ budget: BUDGET, spent, observations, leaderboard }, null, 2));
 

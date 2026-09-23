@@ -67,9 +67,30 @@ export function mergeCatalog(base: PriceCatalog, overrides: PriceEntry[] = []): 
   for (const entry of base.entries) byId.set(entry.id, entry);
   for (const entry of overrides) {
     const prev = byId.get(entry.id);
-    byId.set(entry.id, prev ? { ...prev, ...entry, perMillion: { ...prev.perMillion, ...entry.perMillion } } : entry);
+    if (!prev) {
+      byId.set(entry.id, entry);
+      continue;
+    }
+    // A user row that says "this model costs 4.5 in / 13.5 out" is a price edit, not a
+    // declaration that the model has no peak multiplier. Spreading the row wholesale
+    // silently turned peak billing off and under-charged by 2x.
+    byId.set(entry.id, {
+      ...prev,
+      ...entry,
+      currency: entry.currency ?? prev.currency,
+      peakMultiplier: entry.peakMultiplier ?? prev.peakMultiplier,
+      contextTokens: entry.contextTokens ?? prev.contextTokens,
+      maxOutputTokens: entry.maxOutputTokens ?? prev.maxOutputTokens,
+      aliases: entry.aliases?.length ? entry.aliases : prev.aliases,
+      perMillion: { ...prev.perMillion, ...sparse(entry.perMillion) },
+    });
   }
   return { ...base, entries: [...byId.values()] };
+}
+
+/** drop undefined so an absent field cannot overwrite a known one */
+function sparse(values: Partial<PricePerMillion> = {}): Partial<PricePerMillion> {
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined)) as Partial<PricePerMillion>;
 }
 
 export function catalogAgeDays(asOf: string, now: Date = new Date()): number {

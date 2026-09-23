@@ -23,8 +23,6 @@ export interface PriceAwareConfig {
   holidays: string[];
   /** spend money to estimate money only above this bill */
   reconThresholdMajor: number;
-  /** set true for relays that report prompt_tokens including the cached prefix */
-  inputIncludesCache: boolean;
   injectIntoPrompt: boolean;
 }
 
@@ -42,13 +40,15 @@ export const DEFAULT_CONFIG: PriceAwareConfig = {
   prices: [],
   holidays: [],
   reconThresholdMajor: 0.5,
-  inputIncludesCache: false,
   injectIntoPrompt: true,
 };
 
 export function resolveBudget(config: PriceAwareConfig): BudgetPolicy {
   if (config.mode !== 'custom') {
     const base = preset(config.mode);
+    // 'max' means no asking at all: overwriting its Infinity sentinels with the
+    // config defaults made /budget max still interrupt at ¥1.5 and still block
+    if (base.taskSoftCapMicros === Number.POSITIVE_INFINITY) return base;
     return {
       ...base,
       warnFraction: config.warnPercent / 100,
@@ -89,9 +89,28 @@ export function validateConfig(config: Partial<PriceAwareConfig>): ConfigProblem
     problems.push({ field: 'mode', message: `mode 需为 economy|normal|max|custom，收到 ${config.mode}` });
   }
   for (const [index, entry] of (config.prices ?? []).entries()) {
-    if (!entry?.id) problems.push({ field: 'prices', message: `prices[${index}] 缺少 id` });
-    else if (!entry.perMillion || !Number.isFinite(entry.perMillion.output)) {
-      problems.push({ field: 'prices', message: `prices[${index}] (${entry.id}) 缺少 perMillion.output` });
+    if (!entry?.id) {
+      problems.push({ field: 'prices', message: `prices[${index}] 缺少 id` });
+      continue;
+    }
+    // a NaN price is worse than no price: it poisons the ledger total and every
+    // comparison in the gate then reads false, which silently means "allow"
+    const perMillion = entry.perMillion ?? ({} as PriceEntry['perMillion']);
+    for (const key of ['uncachedInput', 'output', 'cacheRead', 'cacheWrite'] as const) {
+      const value = perMillion[key];
+      if (value === undefined) {
+        if (key !== 'cacheWrite') problems.push({ field: 'prices', message: `prices[${index}] (${entry.id}) 缺 perMillion.${key}` });
+        continue;
+      }
+      if (!Number.isFinite(value) || value < 0) {
+        problems.push({ field: 'prices', message: `prices[${index}] (${entry.id}) 的 ${key} 不是 ≥0 的有限数，收到 ${value}` });
+      }
+    }
+    if (entry.peakMultiplier !== undefined && (!Number.isFinite(entry.peakMultiplier) || entry.peakMultiplier < 1)) {
+      problems.push({ field: 'prices', message: `prices[${index}] (${entry.id}) 的 peakMultiplier 需 ≥1，收到 ${entry.peakMultiplier}` });
+    }
+    if (entry.currency && !['CNY', 'USD', 'EUR'].includes(entry.currency.toUpperCase())) {
+      problems.push({ field: 'prices', message: `prices[${index}] (${entry.id}) 的币种 ${entry.currency} 未被支持，会被当成别的币种混算` });
     }
   }
   return problems;

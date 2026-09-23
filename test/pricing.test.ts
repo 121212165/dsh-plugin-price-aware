@@ -70,13 +70,13 @@ test('declared holidays bill at off-peak', () => {
 
 test('nextRegimeChange finds the 12:00 boundary, then Monday', () => {
   const midPeak = nextRegimeChange(bj(2026, 9, 16, 10, 30));
-  assert.deepEqual([midPeak.regime, midPeak.at.toISOString()], ['offpeak', '2026-09-16T04:00:00.000Z']);
+  assert.deepEqual([midPeak!.regime, midPeak!.at.toISOString()], ['offpeak', '2026-09-16T04:00:00.000Z']);
 
   const lunchBreak = nextRegimeChange(bj(2026, 9, 16, 12, 30));
-  assert.deepEqual([lunchBreak.regime, lunchBreak.at.toISOString()], ['peak', '2026-09-16T06:00:00.000Z']);
+  assert.deepEqual([lunchBreak!.regime, lunchBreak!.at.toISOString()], ['peak', '2026-09-16T06:00:00.000Z']);
 
   const fridayEvening = nextRegimeChange(bj(2026, 9, 18, 19));
-  assert.deepEqual([fridayEvening.regime, fridayEvening.at.toISOString()], ['peak', '2026-09-21T01:00:00.000Z'], 'jumps the weekend to Monday 09:00');
+  assert.deepEqual([fridayEvening!.regime, fridayEvening!.at.toISOString()], ['peak', '2026-09-21T01:00:00.000Z'], 'jumps the weekend to Monday 09:00');
 });
 
 test('deferral advice names the wait and the saving', () => {

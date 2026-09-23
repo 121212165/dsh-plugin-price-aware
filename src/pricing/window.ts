@@ -49,10 +49,13 @@ export function isHoliday(at: Date | number, rules: RegimeRules): boolean {
 }
 
 export function isPeakAt(at: Date | number, rules: RegimeRules = {}): boolean {
-  const weekday = beijingWeekday(at);
+  const ms = typeof at === 'number' ? at : at.getTime();
+  // an invalid date must not throw out of costOf/decide and kill a turn
+  if (!Number.isFinite(ms)) return false;
+  const weekday = beijingWeekday(ms);
   if (weekday === 0 || weekday === 6) return false;
-  if (isHoliday(at, rules)) return false;
-  const minutes = beijingMinutes(at);
+  if (isHoliday(ms, rules)) return false;
+  const minutes = beijingMinutes(ms);
   const windows = rules.peakMinutes ?? DEFAULT_PEAK_MINUTES;
   return windows.some(([from, to]) => minutes >= from && minutes < to);
 }
@@ -65,7 +68,7 @@ export function regimeAt(at: Date = new Date(), rules: RegimeRules = {}): Regime
 export function nextRegimeChange(
   at: Date = new Date(),
   rules: RegimeRules = {},
-): { at: Date; regime: Regime } {
+): { at: Date; regime: Regime } | null {
   const current = isPeakAt(at, rules);
   const base = beijingDayStartUtc(at);
   const boundaries = [...new Set((rules.peakMinutes ?? DEFAULT_PEAK_MINUTES).flatMap(([f, t]) => [f, t]))].sort(
@@ -80,7 +83,9 @@ export function nextRegimeChange(
       }
     }
   }
-  return { at: new Date(at.getTime() + 86_400_000), regime: current ? 'peak' : 'offpeak' };
+  // a long enough holiday run really does hide the next flip; say so rather than
+  // inventing a 24h guess the money block would print as fact
+  return null;
 }
 
 export function minutesUntil(at: Date, now: Date = new Date()): number {
@@ -113,7 +118,7 @@ export function deferralAdvice(
   if (entry.peakMultiplier === undefined || entry.peakMultiplier <= 1) return null;
   if (!isPeakAt(now, rules)) return null;
   const next = nextRegimeChange(now, rules);
-  if (next.regime !== 'offpeak') return null;
+  if (!next || next.regime !== 'offpeak') return null;
   const wait = minutesUntil(next.at, now);
   if (wait <= 0) return null;
   const saving = Math.round(micros * (1 - 1 / entry.peakMultiplier));

@@ -41,20 +41,23 @@ export interface ProviderCatalogResult {
 
 export function catalogFromProviderModels(
   models: ProviderModelRecord[],
-  options: { provider: string; baseUrl?: string; asOf?: string } = { provider: 'provider' },
+  options: { provider: string; baseUrl?: string; asOf?: string; defaultCurrency?: string } = { provider: 'provider' },
 ): ProviderCatalogResult {
   const entries: PriceEntry[] = [];
   const unpriced: string[] = [];
   for (const model of models) {
     const input = price(model.effective_input_price_per_million) ?? price(model.input_price_per_million);
     const output = price(model.effective_output_price_per_million) ?? price(model.output_price_per_million);
-    if (input === null || output === null || !model.id) {
+    // a number with no currency is not a price: assuming CNY silently scaled a USD
+    // relay's sheet by ~7x, so such rows are refused until the caller says the unit
+    const currency = (model.currency ?? options.defaultCurrency ?? '').toUpperCase();
+    if (input === null || output === null || !model.id || !currency) {
       if (model.id) unpriced.push(model.id);
       continue;
     }
     entries.push({
       id: `${options.provider}/${model.id}`,
-      currency: (model.currency ?? 'CNY').toUpperCase(),
+      currency: (model.currency ?? options.defaultCurrency ?? '').toUpperCase(),
       perMillion: {
         uncachedInput: input,
         output,

@@ -9,7 +9,7 @@
  *   node examples/live-run3.ts
  */
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { chat, file, loadSecrets, money, usageNumbers } from './live-lib.ts';
+import { chat, file, loadSecrets, money, readPriorJson, usageNumbers } from './live-lib.ts';
 import { catalogFromProviderModels, pickModelByBudget, usageCostMicros } from '../src/provider.ts';
 import { profileModels, rankByUsableCost, recommendMaxTokens, type CallObservation } from '../src/profile.ts';
 import { calibrate } from '../src/estimate.ts';
@@ -31,10 +31,10 @@ const samples: { predicted: number; actual: number }[] = [];
 let spent = 0;
 
 // ---- seed from round 2 -------------------------------------------------
-const previous = JSON.parse(readFileSync(file('report/usage2.json'), 'utf8')) as {
+const previous = readPriorJson<{
   spent: number;
   rows: { model: string; actual?: number; usage?: { prompt: number; completion: number; cached: number; reasoning: number }; chars?: number; ms?: number }[];
-};
+}>('report/usage2.json', 'live-run2');
 spent = previous.spent;
 for (const row of previous.rows) {
   if (!row.usage || !row.actual) continue;

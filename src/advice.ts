@@ -29,7 +29,7 @@ export function renderMoneyContext(input: MoneyContext): string {
 
   if (resolution.kind === 'unknown') {
     lines.push(
-      `钱: 模型 ${resolution.modelId} 不在价表内，花费未知。不要声称知道价格，也不要做花钱的承诺；用 /price-add 补一条价目。`,
+      `钱: 模型 ${resolution.modelId} 不在价表内，花费未知。不要声称知道价格，也不要承诺省钱；要报价需在配置的 price-aware.prices 里补一条价目，补之前只能报 token 数。`,
     );
     return lines.join('\n');
   }
@@ -46,14 +46,24 @@ export function renderMoneyContext(input: MoneyContext): string {
     }`,
   );
 
+  if (resolution.confidence < 0.9 || resolution.entry.lowConfidence) {
+    lines.push(
+      `钱: ↑ ${entry.id} 这条价目是猜配的（匹配方式 ${resolution.via}，把握 ${Math.round(resolution.confidence * 100)}%），数字只当数量级看，别当账单说。`,
+    );
+  }
+
   if (entry.peakMultiplier && entry.peakMultiplier > 1) {
     const next = nextRegimeChange(input.now, input.rules ?? {});
-    const wait = Math.max(0, Math.round((next.at.getTime() - input.now.getTime()) / 60_000));
-    lines.push(
-      `钱: ${peak ? '大批量动作等 ' : '下次转高峰在 '}${formatDuration(wait)} 后（${
-        next.regime === 'offpeak' ? '错峰可省一半' : '届时价×' + entry.peakMultiplier
-      }）`,
-    );
+    if (next) {
+      const wait = Math.max(0, Math.round((next.at.getTime() - input.now.getTime()) / 60_000));
+      lines.push(
+        `钱: ${peak ? '大批量动作等 ' : '下次转高峰在 '}${formatDuration(wait)} 后（${
+          next.regime === 'offpeak' ? '错峰可省一半' : '届时价×' + entry.peakMultiplier
+        }）`,
+      );
+    } else {
+      lines.push(`钱: 未来 40 天都被节假日表盖住了，算不出下次变价点，别承诺错峰省钱。`);
+    }
   }
 
   const balance = input.balanceMicros == null ? '未知' : formatMoney(input.balanceMicros, entry.currency);
@@ -75,7 +85,7 @@ export function renderMoneyContext(input: MoneyContext): string {
     );
   }
   if (input.catalogStale) {
-    lines.push('钱: 价表快照超过 45 天，跑 /price-refresh 核对官方页。');
+    lines.push('钱: 价表快照已超过 45 天，价格可能变了；报数时把这条不确定性一起说出去。');
   }
 
   const threshold = input.askAboveMicros ?? input.policy.taskSoftCapMicros;
