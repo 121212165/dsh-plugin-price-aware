@@ -103,7 +103,13 @@ npm install   # dsh types land in node_modules so the wiring typechecks for real
 npm run check # typecheck + 74 tests + build
 ```
 
-The plugin's `apply()` compiles against the actual `@deepseek-ai/dsh-*` declaration files, and `lib/index.js` imports clean. What is **not** verified is a live mount inside a running `dsh` session — that needs an installed harness (this machine's `~/.dsh` profile symlinks currently point at a deleted clone).
+The plugin's `apply()` compiles against the actual `@deepseek-ai/dsh-*` declaration files, and `lib/index.js` imports clean. The mount itself is **not** unverified: this plugin's per-turn money block shows up inside 28 real `dsh` session logs on this machine, so `apply()`, the event surface and the `systemPrompt.context()` leg have all run live.
+
+### Fixed: the budget notice aborted the session
+
+The `tools/post-execute` notice was built with `source: { kind: 'plugin', plugin: <name> }`, and session format v4 retired that wrapper — `@deepseek-ai/dsh-session-format-v3-to-v4`'s `source()` throws `format v4 message requires a producer-owned source kind` the moment the message is persisted. So the first time the budget advice actually fired, the whole session died. The notice now uses a producer-owned kind (`plugin:price-aware`), matching what the official v3→v4 `producerKind()` migrates old rows to.
+
+That kind path is live-verified in the sibling plugin `dsh-plugin-cache-guard` on dsh 0.1.7-alpha.1 (two notices persisted as `plugin:cache-guard`, session completed). **This repo's own notice leg has not been re-run inside a live session yet** — the local relay container currently has no egress at all (`wget https://example.com` fails inside it while the host reaches OpenRouter fine), so the trigger could not be driven.
 
 ## Verified against a live paid endpoint
 

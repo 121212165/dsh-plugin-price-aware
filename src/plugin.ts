@@ -11,7 +11,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools';
 import type {} from '@deepseek-ai/dsh-commands';
 import type {} from '@deepseek-ai/dsh-tools';
 import type {} from '@deepseek-ai/dsh-system-prompt';
-import { createUserMessage } from '@deepseek-ai/dsh-llm';
+import { createUserMessage, type MessageSource } from '@deepseek-ai/dsh-llm';
 import type {} from '@deepseek-ai/dsh-session';
 
 import { DEFAULT_CONFIG, describeBudget, resolveBudget, validateConfig, type PriceAwareConfig } from './config.ts';
@@ -253,8 +253,13 @@ export function apply(ctx: Context, config: Config): void {
       ...downstream,
       additionalContexts: [
         createUserMessage({
+          // Session format v4 retired the {kind:'plugin', plugin:<name>} wrapper and
+          // throws on it, which aborts the session as soon as this notice is
+          // persisted. Third-party producers own their kind as `plugin:<name>`, the
+          // shape the official v3->v4 producerKind() migrates to; dsh-llm's source
+          // union predates that and is narrower than its own runtime.
           content: [{ type: 'text', text }],
-          source: { kind: 'plugin', plugin: name, form: 'notice', summary: '预算提示' },
+          source: { kind: `plugin:${name}`, form: 'notice', summary: '预算提示' } as unknown as MessageSource,
         }),
         ...('additionalContexts' in downstream ? (downstream.additionalContexts ?? []) : []),
       ],
