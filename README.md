@@ -109,7 +109,13 @@ The plugin's `apply()` compiles against the actual `@deepseek-ai/dsh-*` declarat
 
 The `tools/post-execute` notice was built with `source: { kind: 'plugin', plugin: <name> }`, and session format v4 retired that wrapper — `@deepseek-ai/dsh-session-format-v3-to-v4`'s `source()` throws `format v4 message requires a producer-owned source kind` the moment the message is persisted. So the first time the budget advice actually fired, the whole session died. The notice now uses a producer-owned kind (`plugin:price-aware`), matching what the official v3→v4 `producerKind()` migrates old rows to.
 
-That kind path is live-verified in the sibling plugin `dsh-plugin-cache-guard` on dsh 0.1.7-alpha.1 (two notices persisted as `plugin:cache-guard`, session completed). **This repo's own notice leg has not been re-run inside a live session yet** — the local relay container currently has no egress at all (`wget https://example.com` fails inside it while the host reaches OpenRouter fine), so the trigger could not be driven.
+That kind path is **live A/B tested on this repo**, not inferred: on dsh 0.1.7-alpha.1 (headless profile, one tool call, identical config) the old wrapper produced
+
+```
+dsh: format v4 message requires a producer-owned source kind
+```
+
+with the session log ending at `tool/call` — no `tool/result`, no `step/end`, no `turn/end`. The same task against the fixed build completed normally (27 events ending in `turn/end`), the notice persisted as `{kind: "plugin:price-aware", form: "notice", summary: "预算提示"}`, and the model quoted the budget text back in its answer.
 
 ## Verified against a live paid endpoint
 
