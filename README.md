@@ -1,5 +1,7 @@
 # dsh-plugin-price-aware
 
+> 🧩 **dsh 插件家族**（22 件）：总目录 **[dsh-plugin-family](https://github.com/121212165/dsh-plugin-family)** ｜ 明星插件：**[ide-hub](https://github.com/121212165/dsh-plugin-ide-hub)** 跨 IDE 统一管理 · **[task-forge](https://github.com/121212165/dsh-plugin-task-forge)** 跨窗口无损交接 · **[quota](https://github.com/121212165/dsh-plugin-quota)** 实时用量仪表
+
 **Let your coding agent know what it costs.**
 
 [dsh](https://github.com/deepseek-ai/deepseek-harness) meters tokens well and money not at all. There is no price table, no `/cost`, no balance call, no spend cap anywhere in the harness — the `tokenUsage` projection counts `uncachedInput / output / cacheRead / cacheWrite`, and then the bill happens to whoever owns the account.
