@@ -98,13 +98,14 @@ export function apply(ctx: Context, config: Config): void {
   /**
    * Cross-plugin pricing source (plan 2.3): when cost-ledger is mounted in the
    * same profile it provides its merged sheet as the cordis service
-   * `pricing-catalog`. Resolve is lazy — if the sibling is absent the property
-   * is undefined and this behaves exactly like the self-contained catalog.
+   * `pricing-catalog`. Read it through `ctx.reflect.get`: the context proxy
+   * throws on any property this plugin has not injected, and adding the name to
+   * `inject` would deactivate the whole plugin in profiles without cost-ledger.
    */
   const resolvePrice = (modelId: string, provider: string | undefined): ResolveResult => {
     const own = resolveModel(modelId, catalog, { provider });
     if (own.kind !== 'unknown') return own;
-    const shared = (ctx as unknown as { 'pricing-catalog'?: PriceCatalog })['pricing-catalog'];
+    const shared = ctx.reflect.get('pricing-catalog') as PriceCatalog | undefined;
     return shared ? resolveModel(modelId, shared, { provider }) : own;
   };
   const policy = resolveBudget(config);

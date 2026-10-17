@@ -58,7 +58,7 @@ function mockCtx(shared?: object): { ctx: MockCtx; prompt: PromptDef[]; middlewa
         prompt.push(definition);
       },
     },
-    ...(shared ? { 'pricing-catalog': shared } : {}),
+    reflect: { get: (name: string) => (name === 'pricing-catalog' ? shared : undefined) },
   };
   return { ctx, prompt, middlewares };
 }
