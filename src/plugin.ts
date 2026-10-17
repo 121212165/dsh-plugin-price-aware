@@ -95,6 +95,18 @@ export function apply(ctx: Context, config: Config): void {
   if (!config.enabled) return void log.info('disabled by config');
 
   const catalog: PriceCatalog = mergeCatalog(DEEPSEEK_CATALOG, config.prices as PriceEntry[]);
+  /**
+   * Cross-plugin pricing source (plan 2.3): when cost-ledger is mounted in the
+   * same profile it provides its merged sheet as the cordis service
+   * `pricing-catalog`. Resolve is lazy — if the sibling is absent the property
+   * is undefined and this behaves exactly like the self-contained catalog.
+   */
+  const resolvePrice = (modelId: string, provider: string | undefined): ResolveResult => {
+    const own = resolveModel(modelId, catalog, { provider });
+    if (own.kind !== 'unknown') return own;
+    const shared = (ctx as unknown as { 'pricing-catalog'?: PriceCatalog })['pricing-catalog'];
+    return shared ? resolveModel(modelId, shared, { provider }) : own;
+  };
   const policy = resolveBudget(config);
   const rules = { holidays: config.holidays };
   const moneyBySession = new Map<string, SessionMoney>();
@@ -110,7 +122,7 @@ export function apply(ctx: Context, config: Config): void {
     if (!money) {
       money = {
         model,
-        ledger: new Ledger((event) => resolveModel(event.modelId ?? model.id, catalog, { provider: event.provider ?? model.provider }), {
+        ledger: new Ledger((event) => resolvePrice(event.modelId ?? model.id, event.provider ?? model.provider), {
           rules,
         }),
       };
@@ -125,7 +137,7 @@ export function apply(ctx: Context, config: Config): void {
 
   const moneyBlock = (sessionId: string) => {
     const money = sessionMoney(sessionId, { id: 'unknown' });
-    const resolution = resolveModel(money.model.id, catalog, { provider: money.model.provider });
+    const resolution = resolvePrice(money.model.id, money.model.provider);
     const totals = money.ledger.totals();
     return {
       resolution,
