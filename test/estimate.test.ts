@@ -12,7 +12,6 @@ import {
 } from '../src/estimate.ts';
 import { DEEPSEEK_CATALOG } from '../src/pricing/catalog.ts';
 
-const flash = DEEPSEEK_CATALOG.entries[0]!;
 const pro = DEEPSEEK_CATALOG.entries[1]!;
 const offPeak = new Date(Date.UTC(2026, 8, 16, 1) - 8 * 3_600_000);
 

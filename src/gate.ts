@@ -33,7 +33,7 @@ export interface GateInput {
   projectedMicros: Micros;
   entry: PriceEntry;
   /** cheaper entry to fall back to, if the session can switch models */
-  downgradeTo?: PriceEntry;
+  downgradeTo?: PriceEntry | undefined;
   balanceMicros?: Micros | null;
   ratio: TokenBuckets;
   policy: BudgetPolicy;

@@ -6,7 +6,6 @@
  * restore the bug while keeping the unit tests green.
  */
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { DEEPSEEK_CATALOG, mergeCatalog } from '../src/pricing/catalog.ts';
 import { costOf, emptyBuckets } from '../src/pricing/cost.ts';

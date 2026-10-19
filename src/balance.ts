@@ -18,8 +18,8 @@ export interface BalanceSnapshot {
 }
 
 export interface BalanceOptions {
-  apiKey?: string;
-  baseUrl?: string;
+  apiKey?: string | undefined;
+  baseUrl?: string | undefined;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   now?: () => number;

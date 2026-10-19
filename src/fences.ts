@@ -127,7 +127,6 @@ export function extractCodeChunks(answer: string): CodeChunk[] {
     const marker = fenceMatch[1]!;
     const declaredLang = (fenceMatch[2] ?? '').toLowerCase();
     const infoRest = fenceMatch[3] ?? '';
-    const fenceChar = marker[0]!;
     const infoName = nameFromInfoString(infoRest) ?? nameFromInfoString(declaredLang);
     const bodyLines: string[] = [];
     let cursor = index + 1;

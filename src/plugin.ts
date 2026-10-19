@@ -78,7 +78,7 @@ export const Config = Schema.object({
 
 interface ModelRef {
   id: string;
-  provider?: string;
+  provider?: string | undefined;
 }
 
 interface SessionMoney {
@@ -103,10 +103,11 @@ export function apply(ctx: Context, config: Config): void {
    * `inject` would deactivate the whole plugin in profiles without cost-ledger.
    */
   const resolvePrice = (modelId: string, provider: string | undefined): ResolveResult => {
-    const own = resolveModel(modelId, catalog, { provider });
+    const options = provider === undefined ? undefined : { provider };
+    const own = resolveModel(modelId, catalog, options);
     if (own.kind !== 'unknown') return own;
     const shared = ctx.reflect.get('pricing-catalog') as PriceCatalog | undefined;
-    return shared ? resolveModel(modelId, shared, { provider }) : own;
+    return shared ? resolveModel(modelId, shared, options) : own;
   };
   const policy = resolveBudget(config);
   const rules = { holidays: config.holidays };
@@ -249,10 +250,10 @@ export function apply(ctx: Context, config: Config): void {
     if (!decision || decision.kind === 'allow') return next();
     const callKey = String((exec as { rootCallId?: unknown }).rootCallId ?? (exec as { callId?: unknown }).callId ?? '');
     if (decision.kind === 'block') {
-      pendingAdvice.set(callKey, renderDecision(decision, gated.currency));
-      return { kind: 'ask', reason: renderDecision(decision, gated.currency) };
+      pendingAdvice.set(callKey, renderDecision(decision));
+      return { kind: 'ask', reason: renderDecision(decision) };
     }
-    if (callKey && pendingAdvice.size < 200) pendingAdvice.set(callKey, renderDecision(decision, gated.currency));
+    if (callKey && pendingAdvice.size < 200) pendingAdvice.set(callKey, renderDecision(decision));
     return next();
   });
 
@@ -408,7 +409,7 @@ function estimateCallMicros(exec: { name?: string; arguments?: unknown }, entry:
   return costOf({ uncachedInput: tokens, output: Math.round(tokens * 0.2), cacheRead: 0 }, entry, {}).micros;
 }
 
-function renderDecision(decision: Exclude<GateDecision, { kind: 'allow' }>, currency: Currency): string {
+function renderDecision(decision: Exclude<GateDecision, { kind: 'allow' }>): string {
   const options = decision.options.map((option, index) => `${index + 1}. ${option.label} — ${option.detail}`);
   return `预算提示: ${decision.headline}\n${options.join('\n')}\n把这几个选项原样转给用户，让他选，别替他决定花多少钱。`;
 }

@@ -19,13 +19,13 @@ export function tokensForText(text: string): number {
 export interface TaskShape {
   kind: TaskKind;
   /** agent steps expected; defaults per kind */
-  turns?: number;
+  turns?: number | undefined;
   /** tokens that ride along on every turn: system prompt, tool schemas, conversation history */
-  residentTokens?: number;
+  residentTokens?: number | undefined;
   /** new tokens pulled in per turn from files/search results */
   growthTokensPerTurn?: number;
   /** characters the agent will write out (code, patches, prose) */
-  charsWritten?: number;
+  charsWritten?: number | undefined;
 }
 
 export interface EstimateOptions {
@@ -191,7 +191,7 @@ export function buildTiers(
 
 /** A ±50% guess is only worth money when the bill is big, so recon is gated by cost. */
 export function shouldRecon(estimate: Estimate, entry: PriceEntry, thresholdMicros: Micros, at?: Date): boolean {
-  return priceEstimate(estimate, entry, { at }).micros >= thresholdMicros;
+  return priceEstimate(estimate, entry, at === undefined ? {} : { at }).micros >= thresholdMicros;
 }
 
 /** The read-only recon pass itself: it reads, never writes, and its own bill is small by design. */
@@ -213,7 +213,7 @@ export function reconEstimate(shape: TaskShape, options: EstimateOptions = {}): 
 }
 
 export function reconCost(recon: Estimate, entry: PriceEntry, at?: Date): Micros {
-  return priceEstimate(recon, entry, { at }).micros;
+  return priceEstimate(recon, entry, at === undefined ? {} : { at }).micros;
 }
 
 export interface CalibrationSample {

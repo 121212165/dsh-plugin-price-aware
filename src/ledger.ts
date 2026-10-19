@@ -1,6 +1,5 @@
 import { sumMicros, type Micros } from './money.ts';
 import { costOf, totalTokens, type CostBreakdown, type TokenBuckets } from './pricing/cost.ts';
-import type { PriceEntry } from './pricing/catalog.ts';
 import type { RegimeRules } from './pricing/window.ts';
 import type { ResolveResult } from './pricing/resolve.ts';
 
@@ -25,7 +24,7 @@ export interface UsageEvent {
   step: number;
   usage: RawUsage;
   modelId?: string;
-  provider?: string;
+  provider?: string | undefined;
 }
 
 export function toBuckets(usage: RawUsage, inputIncludesCache = false): TokenBuckets {

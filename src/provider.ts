@@ -67,7 +67,7 @@ export function catalogFromProviderModels(
       contextTokens: model.context_length ?? 200_000,
       maxOutputTokens: model.max_completion_tokens ?? 8_000,
       lowConfidence: model.has_discount === true,
-      note: model.has_discount ? 'provider 显示处于折扣价，折扣结束后价格会回到 list price' : undefined,
+      ...(model.has_discount ? { note: 'provider 显示处于折扣价，折扣结束后价格会回到 list price' } : {}),
     });
   }
   return {
@@ -149,7 +149,7 @@ export function selectModelsByBudget(catalog: PriceCatalog, request: SelectionRe
   return fits.sort((a, b) => Number(b.fits) - Number(a.fits) || a.costMicros - b.costMicros);
 }
 
-export function pickModelByBudget(catalog: PriceCatalog, request: SelectionRequest): { pick?: ModelFit; ranking: ModelFit[] } {
+export function pickModelByBudget(catalog: PriceCatalog, request: SelectionRequest): { pick?: ModelFit | undefined; ranking: ModelFit[] } {
   const ranking = selectModelsByBudget(catalog, request);
   return { pick: ranking.find((fit) => fit.fits), ranking };
 }

@@ -64,7 +64,6 @@ export function profileModels(observations: CallObservation[]): Map<string, Mode
     const chars = list.map((o) => o.visibleChars);
     const charTotal = chars.reduce((a, b) => a + b, 0);
     const charsPerCompletionToken = completion > 0 ? charTotal / completion : 0;
-    const billed = list.filter((o) => o.visibleChars > 0);
     const capHitRate = list.length
       ? list.filter((o) => o.requestedMaxTokens > 0 && o.completionTokens >= o.requestedMaxTokens).length / list.length
       : 0;

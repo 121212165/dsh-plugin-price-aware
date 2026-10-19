@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BalanceTracker, fetchBalance, formatBalance, spendableMicros } from '../src/balance.ts';
 import { renderMoneyContext, renderTiers } from '../src/advice.ts';
-import { buildTiers, estimateTask, tokensForText } from '../src/estimate.ts';
+import { buildTiers, tokensForText } from '../src/estimate.ts';
 import { DEEPSEEK_CATALOG } from '../src/pricing/catalog.ts';
 import { resolveModel } from '../src/pricing/resolve.ts';
 import { preset } from '../src/gate.ts';
