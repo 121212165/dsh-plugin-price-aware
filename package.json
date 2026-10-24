@@ -22,7 +22,8 @@
     "src",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "pricing"
   ],
   "dsh": {
     "bundle": {
@@ -37,7 +38,8 @@
     "prepare": "npm run build",
     "test": "node --test \"test/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm test && npm run build",
+    "prepublishOnly": "npm run check"
   },
   "keywords": [
     "dsh",
@@ -47,7 +49,8 @@
     "cost",
     "budget",
     "tokens",
-    "pricing"
+    "pricing",
+    "dsh-plugin"
   ],
   "repository": {
     "type": "git",
