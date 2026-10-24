@@ -66,7 +66,7 @@
     "@deepseek-ai/schemastery": "3.18.2",
     "@types/node": "26.6.2",
     "typescript": "7.0.2",
-    "@dsh-family/pricing": "workspace:*"
+    "@dsh-family/pricing": "github:121212165/dsh-plugin-family#v0.1.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.0"
