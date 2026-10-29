@@ -28,6 +28,11 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "catalog": {
+      "category": "钱与用量",
+      "blurb": "价格感知注入（宿主侧参考实现风格）",
+      "entries": "自动注入"
     }
   },
   "engines": {

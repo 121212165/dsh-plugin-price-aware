@@ -9,6 +9,9 @@ jobs:
         with:
           node-version: 25
       - run: npm install --no-audit --no-fund
-      - run: npm run build
+      - name: typecheck + test + build
+        run: npm run check
       - name: fail if committed lib/ drifted from source
-        run: git diff --exit-code lib
+        run: |
+          git add -A lib
+          git diff --cached --exit-code lib
