@@ -66,14 +66,17 @@
   },
   "sideEffects": false,
   "devDependencies": {
+    "@dsh-family/kit": "github:121212165/dsh-plugin-kit#v0.2.1",
     "@deepseek-ai/cordis": "4.0.2",
     "@deepseek-ai/dsh-base": "^0.1.2-alpha.4",
     "@deepseek-ai/schemastery": "3.18.2",
     "@types/node": "26.6.2",
-    "typescript": "7.0.2",
-    "@dsh-family/pricing": "github:121212165/dsh-plugin-family#v0.1.0"
+    "typescript": "7.0.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.0"
+  },
+  "dependencies": {
+    "@dsh-family/pricing": "github:121212165/dsh-plugin-family#v0.1.0"
   }
 }
